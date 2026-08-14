@@ -105,8 +105,20 @@ async function pickFile() {
 els.syncBtn.addEventListener('click', async () => {
   hideMsg();
 
-  // Personal-use build: no pre-sync confirmation dialog. Guard against
-  // re-entry instead — the button must be disabled for the WHOLE flow
+  // Full-replace (mirror) mode is destructive: Chrome's Bookmarks Bar, Other
+  // Bookmarks and Reading List are all wiped and rebuilt from the plist.
+  // Warn before anything happens — the extension is shared publicly, so
+  // every user must understand what they are agreeing to.
+  const confirmed = confirm(
+    '⚠️ 同步将【完全替换】Chrome 的书签和阅读清单：\n\n' +
+    '· 书签栏 和 其他书签 的现有内容将被全部清空\n' +
+    '· 阅读清单将被清空\n' +
+    '· 然后按 Safari Bookmarks.plist 完整重建\n\n' +
+    '此操作不可撤销。确定继续吗？'
+  );
+  if (!confirmed) return;
+
+  // Guard against re-entry — the button must be disabled for the WHOLE flow
   // (file picking + parsing + syncing), because a second concurrent sync
   // would interleave wipe/rebuild with the first and corrupt it
   // ("Can't find parent bookmark for id").
