@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Safari Bookmark Sync</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1d1d1f;
+      --muted: #6e6e73;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --border: #d2d2d7;
+      --ok: #34c759;
+      --warn: #ff9500;
+      --err: #ff3b30;
+      --card: #f5f5f7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      width: 360px;
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    h1 {
+      font-size: 16px;
+      margin: 0 0 4px 0;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 0 0 16px 0;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+    }
+    .stat-label { color: var(--muted); }
+    .stat-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .stat-value.create { color: var(--accent); }
+    .stat-value.update { color: var(--warn); }
+    .stat-value.skip { color: var(--ok); }
+    button {
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: default; }
+    button.secondary {
+      background: transparent;
+      color: var(--err);
+      border: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    button.secondary:hover:not(:disabled) {
+      background: #fff5f5;
+    }
+    .status-msg {
+      margin: 10px 0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: none;
+    }
+    .status-msg.show { display: block; }
+    .status-msg.ok { background: #e8f8ed; color: #1a7d36; }
+    .status-msg.err { background: #ffeceb; color: #c0392b; }
+    .status-msg.info { background: #eef6ff; color: #0058a3; }
+    .progress {
+      display: none;
+      text-align: center;
+      color: var(--muted);
+      padding: 8px 0;
+    }
+    .progress.show { display: block; }
+    .footer {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .file-name {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      word-break: break-all;
+    }
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    .hint code {
+      background: var(--card);
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 11px;
+      user-select: all;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧭 Safari Bookmark Sync</h1>
+  <p class="subtitle">用 Safari 书签完全替换 Chrome 书签和阅读清单 · 纯本地 · 无网络</p>
+
+  <div class="card" id="statusCard">
+    <div class="stat-row">
+      <span class="stat-label">已同步映射</span>
+      <span class="stat-value" id="mappingCount">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">根文件夹 ID</span>
+      <span class="stat-value" id="rootFolderId">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">上次文件哈希</span>
+      <span class="stat-value" id="lastHash" style="font-size:11px;">—</span>
+    </div>
+  </div>
+
+  <div class="status-msg" id="statusMsg"></div>
+  <div class="progress" id="progress">同步中…</div>
+
+  <button id="syncBtn">选择 Bookmarks.plist 并完全替换</button>
+  <div class="hint">
+    📍 文件位置：<code>~/Library/Safari/Bookmarks.plist</code><br />
+    在文件选择器中按 <code>⌘⇧G</code> 粘贴该路径即可直达
+  </div>
+  <div class="file-name" id="fileName"></div>
+
+  <button class="secondary" id="resetBtn">清除同步数据</button>
+
+  <div class="footer">
+    Safari → Chrome · 完全替换 · 增量跳过
+  </div>
+
+  <script src="lib/bplist-parser.js"></script>
+  <script src="parser/safari-plist.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
