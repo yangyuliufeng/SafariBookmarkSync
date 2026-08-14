@@ -38,6 +38,10 @@ const els = {
 //                          authored by us in _locales, never user input)
 function applyStaticI18n() {
   if (typeof chrome === 'undefined' || !chrome.i18n) return;
+  // Keep the document language in sync with the browser UI language.
+  if (typeof chrome.i18n.getUILanguage === 'function') {
+    document.documentElement.lang = chrome.i18n.getUILanguage();
+  }
   document.querySelectorAll('[data-i18n]').forEach((el) => {
     const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n'));
     if (msg) el.textContent = msg;

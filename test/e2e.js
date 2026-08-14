@@ -60,6 +60,14 @@ function createChromeEnv() {
         runtime.lastError = null;
         return;
       }
+      // Worst-case Chrome behaviour: bookmarklet-style URLs (javascript:)
+      // may be rejected by the API with "Invalid URL".
+      if (props.url && /^javascript:/i.test(props.url)) {
+        runtime.lastError = { message: 'Invalid URL.' };
+        cb();
+        runtime.lastError = null;
+        return;
+      }
       const id = String(nextId++);
       const node = {
         id, title: props.title || '', url: props.url || undefined,
@@ -476,6 +484,34 @@ async function main() {
     assert(threw, 'empty tree still aborts (lock released after failure)');
     const r3 = await ChromeSync.executeSync(safariTree, Storage);
     assert(r3.counts.create > 0, 'sync works again after a failed run');
+  }
+
+  // ===== Test 9: Per-node failures are tolerated, not fatal =====
+  console.log('\nTest 9: Per-node failure tolerance (rejected bookmark skipped)');
+  {
+    const chrome = createChromeEnv();
+    global.chrome = chrome; globalThis.chrome = chrome;
+    const Storage = SyncStorage; await Storage.clear();
+
+    // A Safari tree containing a javascript: bookmarklet (which the mock
+    // rejects like worst-case Chrome) plus normal nodes around it.
+    const tree = {
+      id: '__safari_root__', type: 'folder', title: 'Safari Bookmarks',
+      children: [
+        { id: 'a', type: 'url', title: 'Before', url: 'https://before.example.com' },
+        { id: 'b', type: 'url', title: 'Bookmarklet', url: 'javascript:void(0)' },
+        { id: 'c', type: 'folder', title: 'Folder', children: [
+          { id: 'd', type: 'url', title: 'Inside', url: 'https://inside.example.com' },
+          { id: 'e', type: 'url', title: 'Bookmarklet2', url: 'javascript:alert(1)' },
+        ] },
+        { id: 'f', type: 'url', title: 'After', url: 'https://after.example.com' },
+      ],
+    };
+    const r = await ChromeSync.executeSync(tree, Storage);
+    assertEq(r.counts.create, 4, 'all valid nodes created (3 urls + 1 folder)');
+    assertEq(r.counts.skip, 2, 'rejected bookmarklets counted as skipped');
+    const barTitles = chrome.tree['1'].children.map((id) => chrome.tree[id].title);
+    assertEq(barTitles, ['Before', 'Folder', 'After'], 'bar keeps order around the skipped node');
   }
 
   // ===== Summary =====

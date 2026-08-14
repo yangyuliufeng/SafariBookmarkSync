@@ -82,9 +82,9 @@
     // Fall back: match common localised titles.
     for (const node of roots) {
       if (node.url) continue;
-      const t = (node.title || '').toLowerCase();
-      if (t.includes('bookmark') && t.includes('bar')) return node.id;
-      if (t === '书签栏' || t === '书签工具栏') return node.id;
+      const title = (node.title || '').toLowerCase();
+      if (title.includes('bookmark') && title.includes('bar')) return node.id;
+      if (title === '书签栏' || title === '书签工具栏') return node.id;
     }
     // Last resort: take the first non-url root.
     for (const node of roots) {
@@ -105,9 +105,9 @@
     // Fall back: match common localised titles.
     for (const node of roots) {
       if (node.url) continue;
-      const t = (node.title || '').toLowerCase();
-      if (t.includes('other') && t.includes('bookmark')) return node.id;
-      if (t === '其他书签') return node.id;
+      const title = (node.title || '').toLowerCase();
+      if (title.includes('other') && title.includes('bookmark')) return node.id;
+      if (title === '其他书签') return node.id;
     }
     throw new Error('Could not locate the Chrome Other Bookmarks folder');
   }
@@ -291,18 +291,46 @@
    * Recursively create Safari nodes under a Chrome parent, preserving order.
    * Chrome appends each created node at the end of the parent, so iterating
    * the Safari children in order yields exactly the Safari ordering.
+   *
+   * Per-node failures are TOLERATED: a single problematic bookmark (e.g. a
+   * javascript: bookmarklet or an overlong URL that Chrome's API rejects)
+   * must not abort the whole sync — it is counted as skipped and logged,
+   * and for folders the whole subtree is skipped. Structural failures
+   * (invalid parent folder) are prevented by the sync lock + root checks.
    */
   async function createTree(children, parentId, counts) {
     for (const child of children || []) {
       if (child.type === 'url') {
-        await createBookmark({ parentId, title: child.title, url: child.url });
-        counts.create++;
+        try {
+          await createBookmark({ parentId, title: child.title, url: child.url });
+          counts.create++;
+        } catch (e) {
+          counts.skip++;
+          console.warn('[Safari Bookmark Sync] skipped bookmark:', child.title, child.url, e);
+        }
       } else if (child.type === 'folder') {
-        const node = await createBookmark({ parentId, title: child.title });
-        counts.create++;
+        let node;
+        try {
+          node = await createBookmark({ parentId, title: child.title });
+          counts.create++;
+        } catch (e) {
+          counts.skip += 1 + countSubtree(child);
+          console.warn('[Safari Bookmark Sync] skipped folder subtree:', child.title, e);
+          continue;
+        }
         await createTree(child.children || [], node.id, counts);
       }
     }
+  }
+
+  // Count all nodes in a Safari subtree (inclusive) — used to report how
+  // many nodes were skipped when a folder could not be created.
+  function countSubtree(node) {
+    let n = 0;
+    for (const c of (node && node.children) || []) {
+      n += 1 + (c.type === 'folder' ? countSubtree(c) : 0);
+    }
+    return n;
   }
 
   /**
@@ -323,7 +351,7 @@
       create: counts.create,
       update: 0,
       move: 0,
-      skip: 0,
+      skip: counts.skip || 0,
       remove: counts.remove || 0,
       readingList: counts.readingList || 0,
       folders: folders,

@@ -73,7 +73,9 @@ async function getStatus() {
 async function reset() {
   const rootFolderId = await Storage.getRootFolderId();
   let removedTree = false;
-  const FIXED_ROOTS = new Set(['0', '1', '2']);
+  // Chrome's fixed roots: '0' root, '1' Bookmarks Bar, '2' Other Bookmarks,
+  // '3' Mobile Bookmarks — none of them may ever be removed by a reset.
+  const FIXED_ROOTS = new Set(['0', '1', '2', '3']);
   if (rootFolderId && !FIXED_ROOTS.has(String(rootFolderId))) {
     removedTree = await new Promise((resolve) => {
       try {
