@@ -7,11 +7,18 @@
  * the background service worker for the actual sync.
  *
  * NOTE: the File System Access API (showOpenFilePicker) is deliberately NOT
- * used — Chrome refuses anything under ~/Library with "无法打开此文件夹内的
- * 文件，因为此文件夹含有系统文件", which is exactly where Safari keeps its
- * bookmarks. The legacy input opens the same native panel without that
- * blocklist.
+ * used — Chrome refuses anything under ~/Library with "Can't open files in
+ * this folder because it contains system files", which is exactly where
+ * Safari keeps its bookmarks. The legacy input opens the same native panel
+ * without that blocklist.
+ *
+ * Localization: static markup is translated via chrome.i18n + data-i18n
+ * attributes (applyStaticI18n below); runtime strings go through the shared
+ * SyncI18n table (i18n.js), which follows the browser's UI language.
  */
+
+const I18n = globalThis.SyncI18n;
+const t = I18n.t;
 
 const els = {
   syncBtn: document.getElementById('syncBtn'),
@@ -23,6 +30,23 @@ const els = {
   rootFolderId: document.getElementById('rootFolderId'),
   lastHash: document.getElementById('lastHash'),
 };
+
+// ---- Static localization (chrome.i18n + data-i18n attributes) ----
+// data-i18n="key"       -> element textContent = chrome.i18n.getMessage(key)
+// data-i18n-html="key"  -> element innerHTML (only for messages that contain
+//                          trusted markup such as <code>; all of them are
+//                          authored by us in _locales, never user input)
+function applyStaticI18n() {
+  if (typeof chrome === 'undefined' || !chrome.i18n) return;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n'));
+    if (msg) el.textContent = msg;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n-html'));
+    if (msg) el.innerHTML = msg;
+  });
+}
 
 // ---- Helpers ----
 function showMsg(text, kind) {
@@ -39,7 +63,7 @@ function showProgress(on) {
 function send(msg) {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(msg, (response) => {
-      resolve(response || { ok: false, error: 'No response' });
+      resolve(response || { ok: false, error: t('noResponse') });
     });
   });
 }
@@ -109,14 +133,7 @@ els.syncBtn.addEventListener('click', async () => {
   // Bookmarks and Reading List are all wiped and rebuilt from the plist.
   // Warn before anything happens — the extension is shared publicly, so
   // every user must understand what they are agreeing to.
-  const confirmed = confirm(
-    '⚠️ 同步将【完全替换】Chrome 的书签和阅读清单：\n\n' +
-    '· 书签栏 和 其他书签 的现有内容将被全部清空\n' +
-    '· 阅读清单将被清空\n' +
-    '· 然后按 Safari Bookmarks.plist 完整重建\n\n' +
-    '此操作不可撤销。确定继续吗？'
-  );
-  if (!confirmed) return;
+  if (!confirm(t('confirmReplace'))) return;
 
   // Guard against re-entry — the button must be disabled for the WHOLE flow
   // (file picking + parsing + syncing), because a second concurrent sync
@@ -129,11 +146,11 @@ els.syncBtn.addEventListener('click', async () => {
     let file;
     try {
       // Remind the user where the file lives while the picker is open.
-      showMsg('请选择 ~/Library/Safari/Bookmarks.plist（选择器中按 ⌘⇧G 粘贴路径直达）', 'info');
+      showMsg(t('pickFilePrompt'), 'info');
       file = await pickFile();
     } catch (e) {
       if (e && e.name === 'AbortError') { hideMsg(); return; } // user cancelled
-      showMsg('选择文件失败：' + (e.message || e), 'err');
+      showMsg(t('pickFileFailed') + (e.message || e), 'err');
       return;
     }
 
@@ -142,7 +159,7 @@ els.syncBtn.addEventListener('click', async () => {
       const buf = await file.arrayBuffer();
       const bytes = new Uint8Array(buf);
       if (bytes.length === 0) {
-        throw new Error('File is empty (0 bytes). Did you pick the right file?');
+        throw new Error(t('emptyFile'));
       }
       const head = Array.from(bytes.slice(0, 8))
         .map((b) => b.toString(16).padStart(2, '0'))
@@ -157,9 +174,9 @@ els.syncBtn.addEventListener('click', async () => {
       safariTree = SafariPlist.buildSafariTree(plistRoot);
       const stats = SafariPlist.countTree(safariTree);
       console.log('[Safari Bookmark Sync] parsed tree:', stats.folders, 'folders,', stats.urls, 'urls');
-      showMsg('解析成功：' + stats.folders + ' 文件夹 · ' + stats.urls + ' 书签，正在同步…', 'info');
+      showMsg(t('parseOk', stats.folders, stats.urls), 'info');
     } catch (e) {
-      showMsg('解析文件失败：' + (e.message || e), 'err');
+      showMsg(t('parseFailed') + (e.message || e), 'err');
       return;
     }
 
@@ -169,28 +186,28 @@ els.syncBtn.addEventListener('click', async () => {
     const resp = await send({ type: 'syncTree', safariTree: safariTree });
 
     if (!resp.ok) {
-      showMsg('同步失败：' + (resp.error || '未知错误'), 'err');
+      showMsg(t('syncFailed') + (resp.error || 'Unknown error'), 'err');
       return;
     }
 
     const r = resp.result;
     if (r.skipped) {
-      showMsg('文件未变化，跳过同步（增量检测）', 'info');
+      showMsg(t('skippedUnchanged'), 'info');
     } else {
       const c = r.counts;
       const parts = [];
-      if (c.remove) parts.push('清除旧书签 ' + c.remove);
-      if (c.create) parts.push('写入 ' + c.create);
-      if (c.readingList) parts.push('阅读清单 ' + c.readingList);
-      if (c.update) parts.push('更新 ' + c.update);
-      if (c.move) parts.push('移动 ' + c.move);
-      if (c.skip) parts.push('跳过 ' + c.skip);
-      const summary = parts.length ? parts.join(' · ') : '无变更';
-      showMsg('替换完成 ✓ ' + summary + '（' + r.durationMs + 'ms）', 'ok');
+      if (c.remove) parts.push(t('statRemoved', c.remove));
+      if (c.create) parts.push(t('statCreated', c.create));
+      if (c.readingList) parts.push(t('statReadingList', c.readingList));
+      if (c.update) parts.push(t('statUpdated', c.update));
+      if (c.move) parts.push(t('statMoved', c.move));
+      if (c.skip) parts.push(t('statSkipped', c.skip));
+      const summary = parts.length ? parts.join(' · ') : t('noChanges');
+      showMsg(t('replaceDone', summary, r.durationMs), 'ok');
     }
     refreshStatus();
   } catch (e) {
-    showMsg('同步出错：' + (e.message || e), 'err');
+    showMsg(t('syncError') + (e.message || e), 'err');
   } finally {
     showProgress(false);
     els.syncBtn.disabled = false;
@@ -199,7 +216,7 @@ els.syncBtn.addEventListener('click', async () => {
 
 // ---- Reset flow ----
 els.resetBtn.addEventListener('click', async () => {
-  if (!confirm('确定要清除同步数据（哈希/映射记录）吗？\n\n注意：这不会改动 Chrome 里已同步的书签。')) return;
+  if (!confirm(t('confirmReset'))) return;
   showProgress(true);
   els.resetBtn.disabled = true;
   try {
@@ -207,17 +224,18 @@ els.resetBtn.addEventListener('click', async () => {
     showProgress(false);
     els.resetBtn.disabled = false;
     if (resp.ok) {
-      showMsg('已清除同步数据', 'info');
+      showMsg(t('resetDone'), 'info');
       refreshStatus();
     } else {
-      showMsg('清除失败：' + (resp.error || '未知错误'), 'err');
+      showMsg(t('resetFailed') + (resp.error || 'Unknown error'), 'err');
     }
   } catch (e) {
     showProgress(false);
     els.resetBtn.disabled = false;
-    showMsg('清除出错：' + (e.message || e), 'err');
+    showMsg(t('resetError') + (e.message || e), 'err');
   }
 });
 
 // Init
+applyStaticI18n();
 refreshStatus();

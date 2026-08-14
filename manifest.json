@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Safari Bookmark Sync",
+  "name": "__MSG_extName__",
   "version": "1.0.0",
-  "description": "纯本地将 Safari 书签单向同步到 Chrome（无网络、无服务器）。",
+  "default_locale": "en",
+  "description": "__MSG_extDescription__",
   "permissions": [
     "bookmarks",
     "readingList",

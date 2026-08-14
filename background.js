@@ -23,12 +23,14 @@
 // MV3 module worker: relative imports work. The IIFE modules attach to globalThis.
 import './lib/bplist-parser.js';
 import './parser/safari-plist.js';
+import './i18n.js';
 import './sync/storage.js';
 import './sync/diff.js';
 import './sync/chrome.js';
 
 const BplistParser = globalThis.BplistParser;
 const SafariPlist = globalThis.SafariPlist;
+const I18n = globalThis.SyncI18n;
 const Storage = globalThis.SyncStorage;
 const ChromeSync = globalThis.ChromeSync;
 
@@ -134,7 +136,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const result = await reset();
         sendResponse({ ok: true, result });
       } else {
-        sendResponse({ ok: false, error: 'Unknown message type: ' + message.type });
+        sendResponse({ ok: false, error: I18n.t('unknownMessage', message.type) });
       }
     } catch (err) {
       sendResponse({ ok: false, error: (err && err.message) || String(err) });

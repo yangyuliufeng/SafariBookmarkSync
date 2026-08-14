@@ -157,6 +157,7 @@ function createChromeEnv() {
 const ROOT = path.resolve(__dirname, '..');
 const BplistParser = require(path.join(ROOT, 'lib', 'bplist-parser.js'));
 const SafariPlist = require(path.join(ROOT, 'parser', 'safari-plist.js'));
+const SyncI18n = require(path.join(ROOT, 'i18n.js'));
 const SyncDiff = require(path.join(ROOT, 'sync', 'diff.js'));
 const SyncStorage = require(path.join(ROOT, 'sync', 'storage.js'));
 const ChromeSync = require(path.join(ROOT, 'sync', 'chrome.js'));

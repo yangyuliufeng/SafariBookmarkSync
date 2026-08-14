@@ -24,6 +24,15 @@
   const BOOKMARKS_BAR_ID = '1';
   const OTHER_BOOKMARKS_ID = '2';
 
+  // Localized messages via the shared i18n table (i18n.js). Falls back to
+  // the raw key when the table is not loaded (e.g. bare unit-test harness),
+  // so this module never hard-depends on load order.
+  function t(key) {
+    const args = Array.prototype.slice.call(arguments, 1);
+    const I = globalThis.SyncI18n;
+    return I && typeof I.t === 'function' ? I.t.apply(null, [key].concat(args)) : key;
+  }
+
   // ---- chrome.bookmarks Promise wrappers ----
 
   function promisify(fn) {
@@ -161,10 +170,7 @@
     // 2. Safety guard: never wipe Chrome when the Safari side is empty.
     //    An empty plist almost always means the wrong file or a parse issue.
     if (bookmarkChildren.length === 0) {
-      throw new Error(
-        'Safari 书签解析结果为 0 条，已中止同步以保护 Chrome 现有书签。' +
-        '请确认选择的是 ~/Library/Safari/Bookmarks.plist。'
-      );
+      throw new Error(t('emptySafariTree'));
     }
 
     // 3. Locate the fixed top-level folders (robust against non-'1'/'2' ids).
@@ -173,14 +179,12 @@
     // Paranoia: if both lookups resolved to the SAME folder (e.g. a localised
     // title fallback misfired), wiping+creating would target one folder twice.
     if (String(bookmarksBarId) === String(otherBookmarksId)) {
-      throw new Error(
-        '书签栏与其他书签解析到了同一个文件夹 (id=' + bookmarksBarId + ')，已中止同步。'
-      );
+      throw new Error(t('sameFolder', bookmarksBarId));
     }
 
     // 4. Wipe ALL Chrome bookmark content (bar + other). Everything is
     //    rebuilt from the plist below, so nothing user-side survives — that
-    //    is exactly what "完全替换" means.
+    //    is exactly what "full replace" means.
     counts.remove = await clearFolderChildren(bookmarksBarId);
     counts.remove += await clearFolderChildren(otherBookmarksId);
 

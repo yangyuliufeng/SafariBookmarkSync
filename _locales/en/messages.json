@@ -1,0 +1,50 @@
+{
+  "extName": {
+    "message": "Safari Bookmark Sync",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Sync Safari bookmarks to Chrome one-way, fully locally (no network, no server).",
+    "description": "Extension description"
+  },
+  "popupSubtitle": {
+    "message": "Fully replace Chrome bookmarks & reading list with Safari's · 100% local · no network",
+    "description": "Subtitle shown under the popup title"
+  },
+  "statMappings": {
+    "message": "Synced mappings",
+    "description": "Status card label: number of stored ID mappings"
+  },
+  "statRootFolder": {
+    "message": "Root folder ID",
+    "description": "Status card label: Chrome root folder id"
+  },
+  "statLastHash": {
+    "message": "Last file hash",
+    "description": "Status card label: hash of the last synced file"
+  },
+  "syncButton": {
+    "message": "Pick Bookmarks.plist & Replace All",
+    "description": "Primary sync button"
+  },
+  "resetButton": {
+    "message": "Clear Sync Data",
+    "description": "Secondary button that clears stored sync state"
+  },
+  "hintLocation": {
+    "message": "📍 File location: <code>~/Library/Safari/Bookmarks.plist</code>",
+    "description": "Hint showing where Safari stores its bookmarks file"
+  },
+  "hintShortcut": {
+    "message": "In the file picker, press <code>⌘⇧G</code> and paste the path to jump straight to it",
+    "description": "Hint explaining the macOS Go to Folder shortcut"
+  },
+  "progressSyncing": {
+    "message": "Syncing…",
+    "description": "Progress indicator text"
+  },
+  "footer": {
+    "message": "Safari → Chrome · Full replace · Incremental skip",
+    "description": "Popup footer text"
+  }
+}

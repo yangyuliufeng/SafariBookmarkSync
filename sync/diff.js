@@ -12,7 +12,7 @@
  *       "update"   : mapped but title/url changed -> update
  *       "move"     : mapped but parent changed -> move
  *       "skip"     : mapped and unchanged in place, or adopted -> skip
- *   - Anti-duplicate (防重复): when creating, if a sibling with the same
+ *   - Anti-duplicate: when creating, if a sibling with the same
  *     title (and url for bookmarks) already exists, adopt it into the mapping
  *     instead of creating a duplicate.
  */

@@ -121,42 +121,46 @@
   </style>
 </head>
 <body>
+  <!-- All user-visible text is localized via chrome.i18n (see the
+       data-i18n attributes and popup.js applyStaticI18n). The English text
+       below is only a fallback for opening this file outside the extension. -->
   <h1>🧭 Safari Bookmark Sync</h1>
-  <p class="subtitle">用 Safari 书签完全替换 Chrome 书签和阅读清单 · 纯本地 · 无网络</p>
+  <p class="subtitle" data-i18n="popupSubtitle">Fully replace Chrome bookmarks &amp; reading list with Safari's · 100% local · no network</p>
 
   <div class="card" id="statusCard">
     <div class="stat-row">
-      <span class="stat-label">已同步映射</span>
+      <span class="stat-label" data-i18n="statMappings">Synced mappings</span>
       <span class="stat-value" id="mappingCount">—</span>
     </div>
     <div class="stat-row">
-      <span class="stat-label">根文件夹 ID</span>
+      <span class="stat-label" data-i18n="statRootFolder">Root folder ID</span>
       <span class="stat-value" id="rootFolderId">—</span>
     </div>
     <div class="stat-row">
-      <span class="stat-label">上次文件哈希</span>
+      <span class="stat-label" data-i18n="statLastHash">Last file hash</span>
       <span class="stat-value" id="lastHash" style="font-size:11px;">—</span>
     </div>
   </div>
 
   <div class="status-msg" id="statusMsg"></div>
-  <div class="progress" id="progress">同步中…</div>
+  <div class="progress" id="progress" data-i18n="progressSyncing">Syncing…</div>
 
-  <button id="syncBtn">选择 Bookmarks.plist 并完全替换</button>
+  <button id="syncBtn" data-i18n="syncButton">Pick Bookmarks.plist &amp; Replace All</button>
   <div class="hint">
-    📍 文件位置：<code>~/Library/Safari/Bookmarks.plist</code><br />
-    在文件选择器中按 <code>⌘⇧G</code> 粘贴该路径即可直达
+    <span data-i18n-html="hintLocation">📍 File location: <code>~/Library/Safari/Bookmarks.plist</code></span><br />
+    <span data-i18n-html="hintShortcut">In the file picker, press <code>⌘⇧G</code> and paste the path to jump straight to it</span>
   </div>
   <div class="file-name" id="fileName"></div>
 
-  <button class="secondary" id="resetBtn">清除同步数据</button>
+  <button class="secondary" id="resetBtn" data-i18n="resetButton">Clear Sync Data</button>
 
-  <div class="footer">
-    Safari → Chrome · 完全替换 · 增量跳过
+  <div class="footer" data-i18n="footer">
+    Safari → Chrome · Full replace · Incremental skip
   </div>
 
   <script src="lib/bplist-parser.js"></script>
   <script src="parser/safari-plist.js"></script>
+  <script src="i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
