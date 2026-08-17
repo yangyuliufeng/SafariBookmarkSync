@@ -29,6 +29,11 @@ const els = {
   mappingCount: document.getElementById('mappingCount'),
   rootFolderId: document.getElementById('rootFolderId'),
   lastHash: document.getElementById('lastHash'),
+  confirmBar: document.getElementById('confirmBar'),
+  confirmTitle: document.getElementById('confirmTitle'),
+  confirmBody: document.getElementById('confirmBody'),
+  confirmOkBtn: document.getElementById('confirmOkBtn'),
+  confirmCancelBtn: document.getElementById('confirmCancelBtn'),
 };
 
 // ---- Static localization (chrome.i18n + data-i18n attributes) ----
@@ -64,11 +69,68 @@ function showProgress(on) {
   els.progress.className = on ? 'progress show' : 'progress';
 }
 
+// ---- Inline confirmation bar ----
+// window.confirm() is deliberately NOT used anywhere in this popup: on some
+// macOS builds, showing the NSSavePanel file picker while/over a native
+// alert crashes the WHOLE Chrome browser process at the OS level
+// (ViewBridge +[NSVB_AnimationFencingSupport
+// _synchronizeDrawingAcrossProcessesOverPort:] -> EXC_BREAKPOINT). All
+// destructive actions confirm through this DOM bar instead.
+let confirmResolve = null;
+
+function askConfirm(title, body) {
+  hideConfirm();
+  els.confirmTitle.textContent = title;
+  els.confirmBody.textContent = body;
+  els.confirmOkBtn.textContent = t('confirmOk');
+  els.confirmCancelBtn.textContent = t('confirmCancel');
+  els.confirmBar.hidden = false;
+  els.confirmBar.className = 'confirm-bar show';
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+  });
+}
+
+function hideConfirm(result) {
+  els.confirmBar.className = 'confirm-bar';
+  els.confirmBar.hidden = true;
+  if (confirmResolve) {
+    const r = confirmResolve;
+    confirmResolve = null;
+    r(!!result);
+  }
+}
+
+els.confirmOkBtn.addEventListener('click', () => hideConfirm(true));
+els.confirmCancelBtn.addEventListener('click', () => hideConfirm(false));
+
 function send(msg) {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(msg, (response) => {
-      resolve(response || { ok: false, error: t('noResponse') });
-    });
+    let settled = false;
+    const done = (value) => {
+      if (!settled) {
+        settled = true;
+        resolve(value);
+      }
+    };
+    try {
+      chrome.runtime.sendMessage(msg, (response) => {
+        // When the MV3 service worker is (re)starting, Chrome may invoke the
+        // callback with NO response and set runtime.lastError
+        // ("The message port closed before a response was received"). That
+        // must be surfaced as a normal failure — not mistaken for an empty
+        // success — and never thrown as an uncaught error.
+        const lastError = chrome.runtime && chrome.runtime.lastError;
+        if (lastError) {
+          done({ ok: false, error: t('noResponse') + ' (' + lastError.message + ')' });
+          return;
+        }
+        done(response || { ok: false, error: t('noResponse') });
+      });
+    } catch (e) {
+      // Extension context invalidated (e.g. extension reloaded mid-sync).
+      done({ ok: false, error: (e && e.message) || String(e) });
+    }
   });
 }
 
@@ -133,20 +195,23 @@ async function pickFile() {
 els.syncBtn.addEventListener('click', async () => {
   hideMsg();
 
-  // Full-replace (mirror) mode is destructive: Chrome's Bookmarks Bar, Other
-  // Bookmarks and Reading List are all wiped and rebuilt from the plist.
-  // Warn before anything happens — the extension is shared publicly, so
-  // every user must understand what they are agreeing to.
-  if (!confirm(t('confirmReplace'))) return;
-
   // Guard against re-entry — the button must be disabled for the WHOLE flow
-  // (file picking + parsing + syncing), because a second concurrent sync
-  // would interleave wipe/rebuild with the first and corrupt it
-  // ("Can't find parent bookmark for id").
+  // (confirm + file picking + parsing + syncing), because a second
+  // concurrent sync would interleave wipe/rebuild with the first and corrupt
+  // it ("Can't find parent bookmark for id").
   if (els.syncBtn.disabled) return;
   els.syncBtn.disabled = true;
 
   try {
+    // Full-replace (mirror) mode is destructive: Chrome's Bookmarks Bar,
+    // Other Bookmarks and Reading List are all wiped and rebuilt from the
+    // plist. Warn before anything happens — the extension is shared
+    // publicly, so every user must understand what they are agreeing to.
+    // NOTE: must NOT use window.confirm() here (see askConfirm comment) —
+    // on some macOS builds the file picker shown after the alert crashes
+    // the whole Chrome browser process.
+    if (!(await askConfirm(t('confirmTitle'), t('confirmReplace')))) return;
+
     let file;
     try {
       // Remind the user where the file lives while the picker is open.
@@ -220,7 +285,8 @@ els.syncBtn.addEventListener('click', async () => {
 
 // ---- Reset flow ----
 els.resetBtn.addEventListener('click', async () => {
-  if (!confirm(t('confirmReset'))) return;
+  // Inline confirm (never window.confirm — see askConfirm comment).
+  if (!(await askConfirm(t('confirmTitle'), t('confirmReset')))) return;
   showProgress(true);
   els.resetBtn.disabled = true;
   try {

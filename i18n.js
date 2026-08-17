@@ -62,6 +62,11 @@
           id + '); sync aborted.',
       unknownMessage: (type) => 'Unknown message type: ' + type,
       noResponse: 'No response',
+
+      // ---- popup: inline confirm bar ----
+      confirmTitle: 'Are you sure?',
+      confirmOk: 'Continue',
+      confirmCancel: 'Cancel',
     },
 
     zh: {
@@ -105,6 +110,11 @@
         (id) => '书签栏与其他书签解析到了同一个文件夹 (id=' + id + ')，已中止同步。',
       unknownMessage: (type) => '未知消息类型：' + type,
       noResponse: '无响应',
+
+      // ---- popup: inline confirm bar ----
+      confirmTitle: '确定要执行吗？',
+      confirmOk: '继续',
+      confirmCancel: '取消',
     },
   };
 

@@ -118,6 +118,44 @@
       font-size: 11px;
       user-select: all;
     }
+    /* Inline confirm bar — replaces window.confirm(), which must NOT be used:
+       on some macOS builds the follow-up NSSavePanel (file picker) shown
+       while the alert is on screen crashes Chrome at the OS level
+       (ViewBridge +[NSVB_AnimationFencingSupport
+       _synchronizeDrawingAcrossProcessesOverPort:] -> EXC_BREAKPOINT,
+       whole-browser crash). */
+    .confirm-bar {
+      display: none;
+      margin: 10px 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--warn);
+      background: #fff8e6;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .confirm-bar.show { display: block; }
+    .confirm-bar .confirm-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #8a5200;
+    }
+    .confirm-bar .confirm-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .confirm-bar .confirm-actions button {
+      margin-top: 0;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .confirm-bar .confirm-cancel {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .confirm-bar .confirm-cancel:hover:not(:disabled) { background: #fff; }
   </style>
 </head>
 <body>
@@ -144,6 +182,17 @@
 
   <div class="status-msg" id="statusMsg"></div>
   <div class="progress" id="progress" data-i18n="progressSyncing">Syncing…</div>
+
+  <!-- Destructive-action confirmation, inline. Never use window.confirm()
+       here — see the .confirm-bar CSS comment for the macOS Chrome crash. -->
+  <div class="confirm-bar" id="confirmBar" hidden>
+    <div class="confirm-title" id="confirmTitle"></div>
+    <div id="confirmBody"></div>
+    <div class="confirm-actions">
+      <button id="confirmOkBtn"></button>
+      <button id="confirmCancelBtn" class="confirm-cancel"></button>
+    </div>
+  </div>
 
   <button id="syncBtn" data-i18n="syncButton">Pick Bookmarks.plist &amp; Replace All</button>
   <div class="hint">
